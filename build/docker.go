@@ -11,12 +11,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/magefile/mage/sh"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/magefile/mage/sh"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/image"
 	"github.com/moby/moby/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
