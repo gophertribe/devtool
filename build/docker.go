@@ -19,7 +19,7 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-const buildImage = "mklimuk/gobuild:1.24-cross"
+const buildImage = "gophertribe/gobuild:1.25-bookworm"
 
 // DockerBuildOpts represents options for Docker builds
 type DockerBuildOpts struct {

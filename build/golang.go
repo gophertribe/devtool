@@ -66,19 +66,40 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 	if opts.OS != "" {
 		goos = opts.OS
 	}
-	err := sh.RunWithV(map[string]string{
-		"GOOS":         goos,
-		"GOARCH":       goarch,
-		"GOARM":        "7",
-		"CGO_ENABLED":  cgoFlag,
-		"GOPRIVATE":    "github.com/gophertribe,github.com/mklimuk,github.com/satsysoft",
-		"CC":           "arm-linux-gnueabihf-gcc",
-		"CXX":          "arm-linux-gnueabihf-g++",
-		"CGO_CFLAGS":   "-march=armv7-a+fp",
-		"CGO_CXXFLAGS": "-march=armv7-a+fp",
-	}, "go", args...)
-	if err != nil {
-		return fmt.Errorf("go crossbuild error: %w", err)
+
+	switch goarch {
+	case "arm":
+		err := sh.RunWithV(map[string]string{
+			"GOOS":         goos,
+			"GOARCH":       goarch,
+			"GOARM":        "7",
+			"CGO_ENABLED":  cgoFlag,
+			"GOPRIVATE":    "github.com/gophertribe,github.com/mklimuk,github.com/satsysoft",
+			"CC":           "arm-linux-gnueabihf-gcc",
+			"CXX":          "arm-linux-gnueabihf-g++",
+			"CGO_CFLAGS":   "-march=armv7-a+fp",
+			"CGO_CXXFLAGS": "-march=armv7-a+fp",
+		}, "go", args...)
+		if err != nil {
+			return fmt.Errorf("go build error: %w", err)
+		}
+		return nil
+	case "arm64":
+		err := sh.RunWithV(map[string]string{
+			"GOOS":         goos,
+			"GOARCH":       goarch,
+			"CGO_ENABLED":  cgoFlag,
+			"GOPRIVATE":    "github.com/gophertribe,github.com/mklimuk,github.com/satsysoft",
+			"CC":           "aarch64-linux-gnu-gcc",
+			"CXX":          "aarch64-linux-gnu-g++",
+			"CGO_CFLAGS":   "-march=armv8-a",
+			"CGO_CXXFLAGS": "-march=armv8-a",
+		}, "go", args...)
+		if err != nil {
+			return fmt.Errorf("go build error: %w", err)
+		}
+		return nil
 	}
-	return nil
+
+	return fmt.Errorf("unsupported architecture: %s", goarch)
 }
