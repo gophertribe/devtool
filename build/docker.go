@@ -37,6 +37,8 @@ type GoBuildOpts struct {
 	Version       string
 	ConfigPackage string
 	Tags          []string
+	Arch          string
+	OS            string
 }
 
 // Docker runs a mage target in a Docker container
