@@ -6,6 +6,7 @@ require (
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/evanw/esbuild v0.25.8
 	github.com/fatih/color v1.18.0
+	github.com/go-git/go-git/v5 v5.16.2
 	github.com/lmittmann/tint v1.1.2
 	github.com/magefile/mage v1.15.0
 	github.com/moby/moby/api v1.52.0-alpha.1
@@ -30,7 +31,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
-	github.com/go-git/go-git/v5 v5.16.2 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
