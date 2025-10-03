@@ -39,6 +39,7 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 	if opts.EnableCgo {
 		cgoFlag = "1"
 	}
+
 	args := []string{"build", "-o", output, fmt.Sprintf(`-ldflags=%s`, flags.String())}
 	if len(opts.Tags) > 0 {
 		args = append(args, "-tags", strings.Join(opts.Tags, " "))
@@ -60,10 +61,10 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 	}
 
 	if opts.Arch != "" {
-		goos = opts.Arch
-	}
-	if opts.Arch != "" {
 		goarch = opts.Arch
+	}
+	if opts.OS != "" {
+		goos = opts.OS
 	}
 	err := sh.RunWithV(map[string]string{
 		"GOOS":         goos,
