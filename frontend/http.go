@@ -13,8 +13,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-const ConsolePublicPath = "/console"
-
 var files fs.FS
 
 func Local(path string) {
