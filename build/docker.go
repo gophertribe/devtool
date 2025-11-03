@@ -67,7 +67,7 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 	}
 	_, _ = io.Copy(os.Stdout, reader)
 
-	pwd := strings.TrimSuffix(getProjectPath(), "/")
+	pwd := strings.TrimSuffix(GetProjectPath(), "/")
 	workspace := strings.TrimSuffix(getWorkspacePath(), "/")
 
 	// if we run inside a workspace we have to adjust the path
@@ -220,8 +220,8 @@ func getWorkspacePath() string {
 	return dir
 }
 
-// getProjectPath returns the Go project path
-func getProjectPath() string {
+// GetProjectPath returns the Go project path
+func GetProjectPath() string {
 	out, _ := exec.Command("go", "env", "GOMOD").CombinedOutput()
 	val := strings.TrimSpace(string(out))
 	if val == "" {
