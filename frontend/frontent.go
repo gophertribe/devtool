@@ -24,10 +24,6 @@ import (
 var ErrBuildFailed = errors.New("build failed")
 
 type BuildOptions struct {
-	// TLSCertPath is the path to the TLS certificate file (auto-generated if not provided)
-	TLSCertPath string
-	// TLSKeyPath is the path to the TLS key file (auto-generated if not provided)
-	TLSKeyPath string
 	// Mode is the build mode, either "prod" or "dev"
 	Mode string
 	// BuildDir is the target directory of the build
@@ -111,7 +107,7 @@ func Build(opts BuildOptions) error {
 		return fmt.Errorf("could not copy static files: %w", err)
 	}
 
-	err = BuildIndex(tmpDir+"/console.html", indexParams)
+	err = BuildIndex(filepath.Join(tmpDir, opts.IndexFile), indexParams)
 	if err != nil {
 		return fmt.Errorf("could not build index file: %w", err)
 	}
@@ -147,7 +143,7 @@ func Proxy(ctx context.Context, opts BuildOptions, enableTLS bool, port int) err
 	mux := http.NewServeMux()
 
 	// TODO: hooks for reverse proxy
-	mux.Handle("GET /console/{subpath...}", http.StripPrefix("/console/", ServeHtml(opts.IndexFile)))
+	mux.Handle(fmt.Sprintf("GET /%s/{subpath...}", opts.PublicPath), http.StripPrefix(fmt.Sprintf("/%s/", opts.PublicPath), ServeHtml(opts.IndexFile)))
 	//mux.Handle("/api/", display.NewReverseProxy("/api", fmt.Sprintf("http://%s", remote)))
 
 	server := http.Server{
