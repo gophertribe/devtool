@@ -115,7 +115,7 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 		Cmd:        cmd,
 	}, &container.HostConfig{
 		Binds:      binds,
-		AutoRemove: true,
+		AutoRemove: false, // Disable auto-remove to prevent race condition when reading logs
 	}, nil, &v1.Platform{
 		Architecture: "amd64",
 		OS:           "linux",
@@ -156,6 +156,7 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 	}
 	if out != nil {
 		_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+		_ = out.Close()
 	}
 	return err
 }
