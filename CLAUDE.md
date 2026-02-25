@@ -9,4 +9,3 @@ Each project using this pattern contains a `cmd/dev` application that compiles u
 - `init` - sets up `cmd/dev` and `Makefile` for a given repository.
 
 `github.com/gophertribe/devtool` contains helper packages that can be used to test and build applications in a standard way. It can use a Docker-based development environment to cross-compile binaries with cgo dependencies to different platforms.
-
