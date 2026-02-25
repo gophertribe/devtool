@@ -11,6 +11,18 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
+// GoBuildOpts represents options for Go builds
+type GoBuildOpts struct {
+	EnableCgo     bool
+	InjectVersion bool
+	Version       string
+	ConfigPackage string
+	Tags          []string
+	Arch          string
+	OS            string
+	GoPrivate     string
+}
+
 // GoBuild builds a Go application with the given options
 func GoBuild(output, source string, opts GoBuildOpts) error {
 	var flags strings.Builder
@@ -28,11 +40,11 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 		if err != nil {
 			return fmt.Errorf("could not establish current commit: %w", err)
 		}
-		flags.WriteString(fmt.Sprintf(" -X %s.AppVersion=%s", opts.ConfigPackage, opts.Version))
-		flags.WriteString(fmt.Sprintf(" -X %s.GitCommit=%s", opts.ConfigPackage, ref.Hash().String()[:6]))
-		flags.WriteString(fmt.Sprintf(" -X %s.GitBranch=%s", opts.ConfigPackage, ref.Name().Short()))
-		flags.WriteString(fmt.Sprintf(" -X %s.BuildTime=%s", opts.ConfigPackage, time.Now().Format(time.RFC3339)))
-		flags.WriteString(fmt.Sprintf(" -X %s.Arch=x64", opts.ConfigPackage))
+		fmt.Fprintf(&flags, " -X %s.AppVersion=%s", opts.ConfigPackage, opts.Version)
+		fmt.Fprintf(&flags, " -X %s.GitCommit=%s", opts.ConfigPackage, ref.Hash().String()[:6])
+		fmt.Fprintf(&flags, " -X %s.GitBranch=%s", opts.ConfigPackage, ref.Name().Short())
+		fmt.Fprintf(&flags, " -X %s.BuildTime=%s", opts.ConfigPackage, time.Now().Format(time.RFC3339))
+		fmt.Fprintf(&flags, " -X %s.Arch=x64", opts.ConfigPackage)
 	}
 
 	var cgoFlag = "0"
@@ -52,7 +64,7 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 	if (opts.OS == "" || opts.OS == goos) && (opts.Arch == "" || opts.Arch == goarch) {
 		err := sh.RunWithV(map[string]string{
 			"CGO_ENABLED": cgoFlag,
-			"GOPRIVATE":   "github.com/gophertribe,github.com/mklimuk,github.com/satsysoft",
+			"GOPRIVATE":   opts.GoPrivate,
 		}, "go", args...)
 		if err != nil {
 			return fmt.Errorf("go build error: %w", err)

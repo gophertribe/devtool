@@ -30,17 +30,6 @@ type DockerBuildOpts struct {
 	Image    string
 }
 
-// GoBuildOpts represents options for Go builds
-type GoBuildOpts struct {
-	EnableCgo     bool
-	InjectVersion bool
-	Version       string
-	ConfigPackage string
-	Tags          []string
-	Arch          string
-	OS            string
-}
-
 // Docker runs a mage target in a Docker container
 func Docker(ctx context.Context, command string, commandArgs []string, opts DockerBuildOpts) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
