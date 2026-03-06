@@ -7,13 +7,13 @@ require (
 	github.com/evanw/esbuild v0.25.8
 	github.com/fatih/color v1.18.0
 	github.com/go-git/go-git/v5 v5.16.2
-	github.com/lmittmann/tint v1.1.2
+	github.com/gophertribe/pussh v0.3.1
 	github.com/magefile/mage v1.15.0
 	github.com/moby/moby/api v1.52.0-alpha.1
 	github.com/moby/moby/client v0.1.0-alpha.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/spf13/afero v1.14.0
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.10.2
 )
 
 require (
@@ -44,7 +44,7 @@ require (
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
