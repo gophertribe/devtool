@@ -1,7 +1,6 @@
 package frontend
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -10,6 +9,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/gophertribe/devtool/httputil"
 	"github.com/spf13/afero"
 )
 
@@ -19,7 +19,7 @@ func Local(path string) {
 	files = afero.NewIOFS(afero.NewBasePathFs(afero.NewOsFs(), path))
 }
 
-var css = regexp.MustCompile("\\.css$")
+var css = regexp.MustCompile(`\.css$`)
 
 func ServeHtml(indexPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -31,12 +31,12 @@ func ServeHtml(indexPath string) http.HandlerFunc {
 		file, err := fs.Open(r.URL.Path)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				jsonResponse(w, http.StatusInternalServerError, Error{Err: err.Error()})
+				httputil.RenderJSON(w, http.StatusInternalServerError, httputil.HandlerError{Error: err.Error()})
 				return
 			}
 			file, err = fs.Open(indexPath)
 			if err != nil {
-				jsonResponse(w, http.StatusInternalServerError, Error{Err: err.Error()})
+				httputil.RenderJSON(w, http.StatusInternalServerError, httputil.HandlerError{Error: err.Error()})
 				return
 			}
 		}
@@ -48,21 +48,4 @@ func ServeHtml(indexPath string) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.Copy(w, file)
 	}
-}
-
-type Error struct {
-	Err     string `json:"error"`
-	Details string `json:"details,omitempty"`
-}
-
-func jsonResponse(w http.ResponseWriter, code int, resp interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	data, err := json.Marshal(resp)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(err.Error()))
-		return
-	}
-	w.WriteHeader(code)
-	_, _ = w.Write(data)
 }

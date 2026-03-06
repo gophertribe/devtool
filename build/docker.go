@@ -11,12 +11,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/magefile/mage/sh"
+	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/api/types/image"
 	"github.com/moby/moby/client"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const buildImage = "gophertribe/gobuild:1.25-bookworm"
@@ -32,24 +31,26 @@ type DockerBuildOpts struct {
 
 // Docker runs a mage target in a Docker container
 func Docker(ctx context.Context, command string, commandArgs []string, opts DockerBuildOpts) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New()
 	if err != nil {
 		return fmt.Errorf("could not initialize docker client: %w", err)
 	}
 
-	info, err := cli.Info(ctx)
+	info, err := cli.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return fmt.Errorf("could not get docker info: %w", err)
 	}
-	slog.Info("docker info", "arch", info.Architecture, "os", info.OperatingSystem, "version", info.ServerVersion)
+	slog.Info("docker info", "arch", info.Info.Architecture, "os", info.Info.OperatingSystem, "version", info.Info.ServerVersion)
 
 	img := buildImage
 	if opts.Image != "" {
 		img = opts.Image
 	}
 
-	reader, err := cli.ImagePull(ctx, img, image.PullOptions{
-		Platform: "linux/amd64",
+	reader, err := cli.ImagePull(ctx, img, client.ImagePullOptions{
+		Platforms: []ocispec.Platform{
+			{Architecture: "amd64", OS: "linux"},
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("could not pull build image: %w", err)
@@ -98,31 +99,36 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 	cmd := append([]string{command}, commandArgs...)
 	slog.Info("running build container", "binds", binds, "cmd", cmd, "workingDir", workingDir)
 
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image:      img,
-		WorkingDir: workingDir,
-		Cmd:        cmd,
-	}, &container.HostConfig{
-		Binds:      binds,
-		AutoRemove: false, // Disable auto-remove to prevent race condition when reading logs
-	}, nil, &v1.Platform{
-		Architecture: "amd64",
-		OS:           "linux",
-	}, "")
+	resp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image:      img,
+			WorkingDir: workingDir,
+			Cmd:        cmd,
+		},
+		HostConfig: &container.HostConfig{
+			Binds:      binds,
+			AutoRemove: false, // Disable auto-remove to prevent race condition when reading logs
+		},
+		Platform: &ocispec.Platform{
+			Architecture: "amd64",
+			OS:           "linux",
+		}})
 	if err != nil {
 		return fmt.Errorf("could not create build container: %w", err)
 	}
 
-	err = cli.ContainerStart(ctx, resp.ID, container.StartOptions{})
+	_, err = cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
 	if err != nil {
 		return fmt.Errorf("could not start build container: %w", err)
 	}
 
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	wait := cli.ContainerWait(ctx, resp.ID, client.ContainerWaitOptions{
+		Condition: container.WaitConditionNotRunning,
+	})
 	select {
-	case err = <-errCh:
+	case err = <-wait.Error:
 		err = fmt.Errorf("container wait error: %w", err)
-	case status := <-statusCh:
+	case status := <-wait.Result:
 		if status.Error != nil {
 			err = fmt.Errorf("container exit error: %s", status.Error.Message)
 		} else if status.StatusCode != 0 {
@@ -131,12 +137,12 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 	}
 
 	defer func() {
-		_ = cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{
+		_, _ = cli.ContainerRemove(ctx, resp.ID, client.ContainerRemoveOptions{
 			Force: true,
 		})
 	}()
 
-	out, errlog := cli.ContainerLogs(ctx, resp.ID, container.LogsOptions{
+	out, errlog := cli.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	})

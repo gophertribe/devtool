@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 )
 
 func RenderJSON(w http.ResponseWriter, status int, body any) {
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(true)
 	if err := enc.Encode(body); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -18,7 +19,10 @@ func RenderJSON(w http.ResponseWriter, status int, body any) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = w.Write(buf.Bytes())
+	_, err := w.Write(buf.Bytes())
+	if err != nil {
+		slog.Error("failed to write response", "error", err)
+	}
 }
 
 func RenderError(w http.ResponseWriter, status int, msg string, cause error) {
