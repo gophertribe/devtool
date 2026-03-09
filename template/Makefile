@@ -1,5 +1,4 @@
 # Makefile for building the custom build tool
-# This replaces the mage-based build system
 
 BINARY_NAME=dev
 SOURCE_DIR=cmd/dev

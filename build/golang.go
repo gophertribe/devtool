@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/magefile/mage/sh"
+	"github.com/gophertribe/devtool/execx"
 )
 
 // GoBuildOpts represents options for Go builds
@@ -62,7 +62,7 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 	goarch := runtime.GOARCH
 	// if we do not cross compile we run a simple build
 	if (opts.OS == "" || opts.OS == goos) && (opts.Arch == "" || opts.Arch == goarch) {
-		err := sh.RunWithV(map[string]string{
+		err := execx.RunWithV(map[string]string{
 			"CGO_ENABLED": cgoFlag,
 			"GOPRIVATE":   opts.GoPrivate,
 		}, "go", args...)
@@ -81,7 +81,7 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 
 	switch goarch {
 	case "arm":
-		err := sh.RunWithV(map[string]string{
+		err := execx.RunWithV(map[string]string{
 			"GOOS":         goos,
 			"GOARCH":       goarch,
 			"GOARM":        "7",
@@ -97,7 +97,7 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 		}
 		return nil
 	case "arm64":
-		err := sh.RunWithV(map[string]string{
+		err := execx.RunWithV(map[string]string{
 			"GOOS":         goos,
 			"GOARCH":       goarch,
 			"CGO_ENABLED":  cgoFlag,

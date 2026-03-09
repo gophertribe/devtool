@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/magefile/mage/sh"
+	"github.com/gophertribe/devtool/execx"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -29,7 +29,7 @@ type DockerBuildOpts struct {
 	Image    string
 }
 
-// Docker runs a mage target in a Docker container
+// Docker runs a command in a Docker build container.
 func Docker(ctx context.Context, command string, commandArgs []string, opts DockerBuildOpts) error {
 	cli, err := client.New()
 	if err != nil {
@@ -159,11 +159,11 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 // DockerBuildImage builds a Docker image
 func DockerBuildImage(dockerfile, image, version string) error {
 	tag := fmt.Sprintf("%s:latest", image)
-	err := sh.Run("docker", "build", "-t", tag, "-f", dockerfile, ".")
+	err := execx.Run("docker", "build", "-t", tag, "-f", dockerfile, ".")
 	if err != nil {
 		return fmt.Errorf("error building docker container: %w", err)
 	}
-	err = sh.Run("docker", "tag", tag, fmt.Sprintf("%s:%s", image, version))
+	err = execx.Run("docker", "tag", tag, fmt.Sprintf("%s:%s", image, version))
 	if err != nil {
 		return fmt.Errorf("error tagging docker container: %w", err)
 	}
@@ -176,12 +176,12 @@ func DockerTagImage(baseImage, releaseImage, version string) error {
 	releaseLatest := fmt.Sprintf("%s:latest", releaseImage)
 	releaseVersion := fmt.Sprintf("%s:%s", releaseImage, version)
 
-	err := sh.Run("docker", "tag", baseImage, releaseLatest)
+	err := execx.Run("docker", "tag", baseImage, releaseLatest)
 	if err != nil {
 		return fmt.Errorf("error tagging docker container: %w", err)
 	}
 
-	err = sh.Run("docker", "tag", baseTag, releaseVersion)
+	err = execx.Run("docker", "tag", baseTag, releaseVersion)
 	if err != nil {
 		return fmt.Errorf("error tagging docker container: %w", err)
 	}
@@ -193,12 +193,12 @@ func DockerPublishImage(releaseImage, version string) error {
 	releaseLatest := fmt.Sprintf("%s:latest", releaseImage)
 	releaseVersion := fmt.Sprintf("%s:%s", releaseImage, version)
 
-	err := sh.Run("docker", "push", releaseVersion)
+	err := execx.Run("docker", "push", releaseVersion)
 	if err != nil {
 		return fmt.Errorf("error pushing docker container: %w", err)
 	}
 
-	err = sh.Run("docker", "push", releaseLatest)
+	err = execx.Run("docker", "push", releaseLatest)
 	if err != nil {
 		return fmt.Errorf("error pushing docker container: %w", err)
 	}

@@ -7,7 +7,6 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/go-git/go-git/v5 v5.16.2
 	github.com/gophertribe/pussh v0.3.1
-	github.com/magefile/mage v1.15.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/spf13/afero v1.14.0
 	github.com/spf13/cobra v1.10.2

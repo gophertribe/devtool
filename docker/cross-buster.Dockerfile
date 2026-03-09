@@ -66,8 +66,6 @@ RUN printf '%s\n' 'path-exclude /usr/share/doc/*' 'path-include /usr/share/doc/*
 
 ARG GITHUB_TOKEN
 RUN echo "machine github.com login mklimuk password $GITHUB_TOKEN" > /root/.netrc
-# install mage
-RUN cd /go/bin && wget https://github.com/magefile/mage/releases/download/v1.15.0/mage_1.15.0_Linux-ARM.tar.gz -O - | tar -xz && cd /go && mage --version
 
 ENV PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig
 

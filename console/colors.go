@@ -10,4 +10,5 @@ var (
 	White  = color.New(color.FgHiWhite).SprintFunc()
 	Bold   = color.New(color.Bold).SprintFunc()
 	Cyan   = color.New(color.FgCyan).SprintFunc()
+	Dim    = color.New(color.Faint).SprintFunc()
 )
