@@ -29,6 +29,15 @@ type DockerBuildOpts struct {
 	Image    string
 }
 
+// DockerImageBuildOpts configures docker image builds.
+type DockerImageBuildOpts struct {
+	Dockerfile string
+	ContextDir string
+	Image      string
+	Version    string
+	Platform   string
+}
+
 // Docker runs a command in a Docker build container.
 func Docker(ctx context.Context, command string, commandArgs []string, opts DockerBuildOpts) error {
 	cli, err := client.New()
@@ -156,16 +165,19 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 	return err
 }
 
-// DockerBuildImage builds a Docker image
-func DockerBuildImage(dockerfile, image, version string) error {
-	tag := fmt.Sprintf("%s:latest", image)
-	err := execx.Run("docker", "build", "-t", tag, "-f", dockerfile, ".")
+// DockerBuildImage builds a docker image and tags both latest and the requested version.
+func DockerBuildImage(opts DockerImageBuildOpts) error {
+	latestTag, versionTag, err := dockerImageTags(opts)
 	if err != nil {
-		return fmt.Errorf("error building docker container: %w", err)
+		return err
 	}
-	err = execx.Run("docker", "tag", tag, fmt.Sprintf("%s:%s", image, version))
+	err = execx.Run("docker", dockerBuildImageArgs(opts, latestTag)...)
 	if err != nil {
-		return fmt.Errorf("error tagging docker container: %w", err)
+		return fmt.Errorf("error building docker image: %w", err)
+	}
+	err = execx.Run("docker", "tag", latestTag, versionTag)
+	if err != nil {
+		return fmt.Errorf("error tagging docker image: %w", err)
 	}
 	return nil
 }
@@ -203,6 +215,37 @@ func DockerPublishImage(releaseImage, version string) error {
 		return fmt.Errorf("error pushing docker container: %w", err)
 	}
 	return nil
+}
+
+func dockerImageTags(opts DockerImageBuildOpts) (string, string, error) {
+	image := strings.TrimSpace(opts.Image)
+	if image == "" {
+		return "", "", fmt.Errorf("docker image name is required")
+	}
+	version := strings.TrimSpace(opts.Version)
+	if version == "" {
+		return "", "", fmt.Errorf("docker image version is required")
+	}
+	return fmt.Sprintf("%s:latest", image), fmt.Sprintf("%s:%s", image, version), nil
+}
+
+func dockerBuildImageArgs(opts DockerImageBuildOpts, latestTag string) []string {
+	dockerfile := strings.TrimSpace(opts.Dockerfile)
+	if dockerfile == "" {
+		dockerfile = "Dockerfile"
+	}
+
+	contextDir := strings.TrimSpace(opts.ContextDir)
+	if contextDir == "" {
+		contextDir = "."
+	}
+
+	args := []string{"buildx", "build", "--load"}
+	if platform := strings.TrimSpace(opts.Platform); platform != "" {
+		args = append(args, "--platform", platform)
+	}
+	args = append(args, "-t", latestTag, "-f", dockerfile, contextDir)
+	return args
 }
 
 // getWorkspacePath returns the Go workspace path
