@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go_minor: ['1.24', '1.25']
+        go_minor: ['1.25', '1.26']
         codename: [buster, bookworm, trixie]
         flavor: [base, wails, audio]
 

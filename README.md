@@ -68,9 +68,12 @@ Two Dockerfiles back the matrix:
   trixie. FROM the official `golang:<GO_VERSION>-<CODENAME>` image.
 - [`docker/Dockerfile.gobuild-buster`](docker/Dockerfile.gobuild-buster) -
   legacy buster. FROM `debian:buster-slim`, pins apt at
-  `archive.debian.org`, fetches Go from `go.dev` with SHA-256
-  verification. **Treat buster images as legacy-only - no security
-  updates flow through `archive.debian.org`.**
+  `archive.debian.org` (buster main only — no backports, which break
+  multi-arch `libudev` resolution), uses
+  [`install-cross-toolchains-buster.sh`](docker/scripts/install-cross-toolchains-buster.sh),
+  fetches Go from `go.dev` with SHA-256 verification. **Treat buster
+  images as legacy-only - no security updates flow through
+  `archive.debian.org`.**
 
 Both Dockerfiles share [`docker/scripts/`](docker/scripts/):
 

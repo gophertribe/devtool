@@ -39,7 +39,7 @@ RUN /tmp/scripts/apt-rewrite-buster.sh \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl wget xz-utils gnupg jq git \
  && GO_VERSION="${GO_VERSION}" /tmp/scripts/install-go.sh \
- && /tmp/scripts/install-cross-toolchains.sh \
+ && /tmp/scripts/install-cross-toolchains-buster.sh \
  && if [ "$FLAVOR" = "wails" ]; then /tmp/scripts/install-wails-deps.sh; fi \
  && if [ "$FLAVOR" = "audio" ]; then /tmp/scripts/install-audio-deps.sh; fi \
  && mkdir -p "$GOPATH/src" "$GOPATH/bin" \

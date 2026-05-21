@@ -11,9 +11,12 @@
 
 set -euo pipefail
 
+# buster-backports is intentionally omitted: on archive.debian.org it
+# routinely wins multi-arch resolution and pulls newer libudev1 (e.g.
+# 247.x from backports) that conflicts with libudev-dev from buster
+# main (241-7~deb10u8), breaking crossbuild-essential / libc6-dev.
 cat > /etc/apt/sources.list <<'EOF'
 deb http://archive.debian.org/debian buster main contrib non-free
-deb http://archive.debian.org/debian buster-backports main contrib non-free
 EOF
 
 rm -f /etc/apt/sources.list.d/*.list
@@ -24,6 +27,7 @@ Acquire::Check-Valid-Until "false";
 APT::Get::AllowUnauthenticated "false";
 APT::Install-Recommends "0";
 APT::Install-Suggests "0";
+APT::Default-Release "buster";
 EOF
 
 cat > /etc/dpkg/dpkg.cfg.d/01_nodoc <<'EOF'
