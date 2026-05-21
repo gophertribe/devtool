@@ -49,7 +49,7 @@ Each CI run (Forgejo or GitHub) produces 18 images:
 
 | dimension       | values                          |
 |-----------------|---------------------------------|
-| Go minor        | `1.24`, `1.25` (floating patch) |
+| Go minor        | `1.26`, `1.25` (floating patch) |
 | Debian codename | `buster`, `bookworm`, `trixie`  |
 | Flavor          | `base`, `wails`, `audio`        |
 
@@ -125,10 +125,10 @@ Examples:
 | Forgejo (`forgejo.gophertribe.com/gophertribe`) | `forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm` |
 | GHCR (`ghcr.io/<owner>`) | `ghcr.io/gophertribe/gobuild:1.25-bookworm` |
 
-More tags: `1.24-trixie`, `1.25-buster-wails`, `1.25-bookworm-audio` (same
+More tags: `1.26-trixie`, `1.25-buster-wails`, `1.25-bookworm-audio` (same
 suffix rules on both registries).
 
-Patch versions float: the workflow resolves the newest `go1.24.x` /
+Patch versions float: the workflow resolves the newest `go1.26.x` /
 `go1.25.x` from `https://go.dev/dl/?mode=json` at job start, so the
 published tag stays at the minor level while the underlying bits stay
 fresh.
@@ -273,10 +273,10 @@ Point at either registry with the same tag:
 
 ```bash
 # Forgejo (default composed ref in build/docker.go)
-DOCKER_BUILD_IMAGE=forgejo.gophertribe.com/gophertribe/gobuild:1.24-bookworm dev build
+DOCKER_BUILD_IMAGE=forgejo.gophertribe.com/gophertribe/gobuild:1.26-bookworm dev build
 
 # GHCR
-DOCKER_BUILD_IMAGE=ghcr.io/gophertribe/gobuild:1.24-bookworm dev build
+DOCKER_BUILD_IMAGE=ghcr.io/gophertribe/gobuild:1.26-bookworm dev build
 ```
 
 ### Private modules

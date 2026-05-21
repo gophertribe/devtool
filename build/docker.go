@@ -53,7 +53,7 @@ type DockerBuildOpts struct {
 	// and over DOCKER_BUILD_IMAGE.
 	Image string
 
-	// GoMinor selects the Go toolchain minor (e.g. "1.24", "1.25").
+	// GoMinor selects the Go toolchain minor (e.g. "1.26", "1.25").
 	GoMinor string
 
 	// Codename selects the Debian release the image is based on

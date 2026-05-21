@@ -13,10 +13,10 @@ func TestBuildImageRef(t *testing.T) {
 		want             string
 	}{
 		{"all defaults", "", "", "", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm"},
-		{"base flavor explicit", "1.24", "bookworm", "base", "forgejo.gophertribe.com/gophertribe/gobuild:1.24-bookworm"},
-		{"buster wails", "1.24", "buster", "wails", "forgejo.gophertribe.com/gophertribe/gobuild:1.24-buster-wails"},
+		{"base flavor explicit", "1.26", "bookworm", "base", "forgejo.gophertribe.com/gophertribe/gobuild:1.26-bookworm"},
+		{"buster wails", "1.26", "buster", "wails", "forgejo.gophertribe.com/gophertribe/gobuild:1.26-buster-wails"},
 		{"bookworm audio", "1.25", "bookworm", "audio", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm-audio"},
-		{"trixie audio", "1.24", "trixie", "audio", "forgejo.gophertribe.com/gophertribe/gobuild:1.24-trixie-audio"},
+		{"trixie audio", "1.26", "trixie", "audio", "forgejo.gophertribe.com/gophertribe/gobuild:1.26-trixie-audio"},
 		{"trixie base", "1.25", "trixie", "base", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-trixie"},
 		{"unknown flavor is treated as base", "1.25", "bookworm", "weird", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm"},
 	}
@@ -40,7 +40,7 @@ func TestResolveBuildImage(t *testing.T) {
 
 	t.Run("env override beats composition", func(t *testing.T) {
 		t.Setenv(envBuildImageOverride, "env.example/foo:bar")
-		got := resolveBuildImage(DockerBuildOpts{GoMinor: "1.24", Codename: "bookworm"})
+		got := resolveBuildImage(DockerBuildOpts{GoMinor: "1.26", Codename: "bookworm"})
 		if got != "env.example/foo:bar" {
 			t.Fatalf("got %q, want %q", got, "env.example/foo:bar")
 		}
@@ -48,8 +48,8 @@ func TestResolveBuildImage(t *testing.T) {
 
 	t.Run("composition fallback", func(t *testing.T) {
 		t.Setenv(envBuildImageOverride, "")
-		got := resolveBuildImage(DockerBuildOpts{GoMinor: "1.24", Codename: "buster", Flavor: "wails"})
-		want := "forgejo.gophertribe.com/gophertribe/gobuild:1.24-buster-wails"
+		got := resolveBuildImage(DockerBuildOpts{GoMinor: "1.26", Codename: "buster", Flavor: "wails"})
+		want := "forgejo.gophertribe.com/gophertribe/gobuild:1.26-buster-wails"
 		if got != want {
 			t.Fatalf("got %q, want %q", got, want)
 		}
