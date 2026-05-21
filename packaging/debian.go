@@ -124,7 +124,7 @@ func BuildDebian(opts DebianOptions) error {
 	if err != nil {
 		return fmt.Errorf("create staging directory: %w", err)
 	}
-	defer os.RemoveAll(stageDir)
+	defer func() { _ = os.RemoveAll(stageDir) }()
 
 	slog.Info("building Debian package", "package", normalized.packageName, "version", normalized.fullVersion, "arch", normalized.architecture)
 

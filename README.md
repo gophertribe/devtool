@@ -14,6 +14,33 @@ The cross-compile environment itself ships as a set of OCI images
 Local builds pull those images and bind-mount the source tree, so
 contributors do not need to install cross toolchains on their host.
 
+## Developing this repository
+
+The root [`Makefile`](Makefile) builds and checks **this** repo (not the
+Makefile template that `devtool init` drops into other projects).
+
+```bash
+make build    # compile cmd/devtool -> bin/devtool
+make test     # unit tests via gotestsum
+make lint     # golangci-lint (5m timeout)
+make check    # lint, then test
+make all      # build + check
+make clean    # remove bin/ and coverage.xml
+make help     # list targets
+```
+
+`gotestsum` and `golangci-lint` are used from `PATH` when installed;
+otherwise the Makefile runs pinned versions via `go run` (same pins as
+[`test/test.go`](test/test.go): gotestsum `v1.13.0`, golangci-lint
+`v2.7.2`). Test output also writes JUnit XML to `coverage.xml` for CI.
+
+Run the binary after a local build:
+
+```bash
+./bin/devtool --help
+./bin/devtool init
+```
+
 ## gobuild build images
 
 ### Matrix
@@ -105,9 +132,24 @@ fresh.
 
 ## CI configuration
 
-Both workflows share the same matrix, tag scheme, floating Go patch
-resolution, and smoke test. They differ only in registry authentication
-and cache backend (Forgejo uses registry cache; GitHub uses GHA cache).
+### Go test and lint (every push)
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) and
+[`.forgejo/workflows/ci.yml`](.forgejo/workflows/ci.yml) run on **every**
+`push` and `pull_request` (all branches, no path filters):
+
+- `make test` — gotestsum, JUnit report uploaded as a workflow artifact
+- `make lint` — golangci-lint
+
+Both jobs use `ubuntu-latest`, Go from [`go.mod`](go.mod), and the root
+[`Makefile`](Makefile) (tools via `PATH` or pinned `go run`).
+
+### gobuild images (docker changes only)
+
+The `build-images` workflows share the same matrix, tag scheme, floating
+Go patch resolution, and smoke test. They differ only in registry
+authentication and cache backend (Forgejo uses registry cache; GitHub
+uses GHA cache).
 
 Trigger sources (each workflow watches its own file plus `docker/**`):
 push to `main`, weekly cron (Monday 04:17 UTC), `workflow_dispatch`.

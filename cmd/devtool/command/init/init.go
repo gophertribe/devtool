@@ -39,6 +39,7 @@ func copyMakefile(force bool) error {
 	target := filepath.Join("Makefile")
 	if !force {
 		if _, err := os.Stat(target); err == nil {
+			//nolint:staticcheck
 			return errors.New("Makefile already exists; use --force to overwrite")
 		}
 	}

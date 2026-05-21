@@ -82,15 +82,15 @@ func renderBanner(w io.Writer, opts Options, name string, args []string) {
 	}
 	parts = append(parts, joinCommand(name, args))
 
-	fmt.Fprintf(w, "%s %s\n", console.Cyan(console.Bold("==>")), console.White(strings.Join(parts, " ")))
+	_, _ = fmt.Fprintf(w, "%s %s\n", console.Cyan(console.Bold("==>")), console.White(strings.Join(parts, " ")))
 }
 
 func printSuccess(w io.Writer, elapsed time.Duration) {
-	fmt.Fprintf(w, "%s %s %s\n", console.Green("OK"), console.Dim("completed in"), console.Dim(formatDuration(elapsed)))
+	_, _ = fmt.Fprintf(w, "%s %s %s\n", console.Green("OK"), console.Dim("completed in"), console.Dim(formatDuration(elapsed)))
 }
 
 func printFailure(w io.Writer, elapsed time.Duration, err error) {
-	fmt.Fprintf(w, "%s %s %s: %v\n", console.Red("ERR"), console.Dim("failed after"), console.Dim(formatDuration(elapsed)), err)
+	_, _ = fmt.Fprintf(w, "%s %s %s: %v\n", console.Red("ERR"), console.Dim("failed after"), console.Dim(formatDuration(elapsed)), err)
 }
 
 func mergeEnv(overrides map[string]string) []string {

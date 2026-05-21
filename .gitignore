@@ -1,3 +1,5 @@
 .cache
+bin/
+coverage.xml
 
 .DS_Store
