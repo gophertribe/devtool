@@ -15,8 +15,13 @@ set -euo pipefail
 # routinely wins multi-arch resolution and pulls newer libudev1 (e.g.
 # 247.x from backports) that conflicts with libudev-dev from buster
 # main (241-7~deb10u8), breaking crossbuild-essential / libc6-dev.
+#
+# debian-security is required: docker.io/debian:buster-slim ships
+# libc6=2.28-10+deb10u3 while buster/main only publishes libc6-dev
+# pinned to deb10u1; security/updates provides matching -dev packages.
 cat > /etc/apt/sources.list <<'EOF'
 deb http://archive.debian.org/debian buster main contrib non-free
+deb http://archive.debian.org/debian-security buster/updates main contrib non-free
 EOF
 
 rm -f /etc/apt/sources.list.d/*.list
