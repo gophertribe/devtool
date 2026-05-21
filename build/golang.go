@@ -89,8 +89,9 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 			"GOPRIVATE":    "github.com/gophertribe,github.com/mklimuk,github.com/satsysoft",
 			"CC":           "arm-linux-gnueabihf-gcc",
 			"CXX":          "arm-linux-gnueabihf-g++",
-			"CGO_CFLAGS":   "-march=armv7-a+fp",
-			"CGO_CXXFLAGS": "-march=armv7-a+fp",
+			"AR":           "arm-linux-gnueabihf-ar",
+			"CGO_CFLAGS":   "-march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard",
+			"CGO_CXXFLAGS": "-march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard",
 		}, "go", args...)
 		if err != nil {
 			return fmt.Errorf("go build error: %w", err)
@@ -104,6 +105,7 @@ func GoBuild(output, source string, opts GoBuildOpts) error {
 			"GOPRIVATE":    "github.com/gophertribe,github.com/mklimuk,github.com/satsysoft",
 			"CC":           "aarch64-linux-gnu-gcc",
 			"CXX":          "aarch64-linux-gnu-g++",
+			"AR":           "aarch64-linux-gnu-ar",
 			"CGO_CFLAGS":   "-march=armv8-a",
 			"CGO_CXXFLAGS": "-march=armv8-a",
 		}, "go", args...)

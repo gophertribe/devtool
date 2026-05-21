@@ -1,0 +1,115 @@
+name: build-images
+
+# Publishes the gobuild cross-compile images to GitHub Container Registry
+# (ghcr.io). Same matrix as the Forgejo workflow: 2 Go minors x 3 Debian
+# codenames x 3 flavors = 18 images per run. Go patch versions float via
+# https://go.dev/dl/?mode=json at job start.
+#
+# Image path: ghcr.io/<repository_owner>/gobuild:<go-minor>-<codename>[-<flavor>]
+#
+# Authentication uses the workflow GITHUB_TOKEN (packages: write). No extra
+# secrets are required when publishing to GHCR for this repository.
+#
+# Optional repository variables (override defaults):
+#   vars.GHCR_IMAGE_NAME   image name segment (default: gobuild)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - '.github/workflows/build-images.yml'
+      - '.forgejo/workflows/build-images.yml'
+  schedule:
+    # weekly Monday 04:17 UTC, picks up new Go patch releases
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ vars.GHCR_IMAGE_NAME || 'gobuild' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        go_minor: ['1.24', '1.25']
+        codename: [buster, bookworm, trixie]
+        flavor: [base, wails, audio]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve latest Go ${{ matrix.go_minor }}.x
+        id: gover
+        run: |
+          set -euo pipefail
+          version=$(curl -fsSL 'https://go.dev/dl/?mode=json' \
+            | jq -r --arg m "${{ matrix.go_minor }}" '
+                [.[] | select(.stable == true)
+                     | select(.version | startswith("go" + $m + "."))
+                     | .version][0]
+              ' \
+            | sed 's/^go//')
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "could not resolve latest go ${{ matrix.go_minor }}.x" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Resolved Go ${{ matrix.go_minor }} -> ${version}"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          set -eu
+          suffix=""
+          if [ "${{ matrix.flavor }}" != "base" ]; then
+            suffix="-${{ matrix.flavor }}"
+          fi
+          tag="${REGISTRY}/${{ github.repository_owner }}/${IMAGE_NAME}:${{ matrix.go_minor }}-${{ matrix.codename }}${suffix}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${tag}"
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.codename == 'buster' && 'docker/Dockerfile.gobuild-buster' || 'docker/Dockerfile.gobuild' }}
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.tag.outputs.tag }}
+          build-args: |
+            GO_VERSION=${{ steps.gover.outputs.version }}
+            DEBIAN_CODENAME=${{ matrix.codename }}
+            FLAVOR=${{ matrix.flavor }}
+          cache-from: type=gha,scope=${{ matrix.go_minor }}-${{ matrix.codename }}-${{ matrix.flavor }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.go_minor }}-${{ matrix.codename }}-${{ matrix.flavor }}
+
+      - name: Smoke test (go version + cross targets)
+        run: |
+          set -eu
+          docker run --rm --platform linux/amd64 "${{ steps.tag.outputs.tag }}" \
+            sh -euc '
+              go version
+              go-cross amd64 go version
+              go-cross arm64 go version
+              go-cross armv7 go version
+            '

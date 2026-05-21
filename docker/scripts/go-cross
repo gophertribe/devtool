@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# go-cross - run a command with the cross-compile environment for one
+# of the supported targets.
+#
+# Usage:
+#   go-cross <amd64|arm64|armv7> <command> [args...]
+#
+# Examples:
+#   go-cross arm64 go build ./cmd/myapp
+#   go-cross armv7 go test ./...
+#   go-cross amd64 env       # inspect the resulting environment
+
+set -eu
+
+if [ $# -lt 2 ]; then
+  cat >&2 <<EOF
+usage: go-cross <amd64|arm64|armv7> <command> [args...]
+
+Supported targets:
+  amd64   native build (CGO_ENABLED=1)
+  arm64   linux/arm64 (CC=aarch64-linux-gnu-gcc)
+  armv7   linux/arm GOARM=7, hard float (CC=arm-linux-gnueabihf-gcc)
+EOF
+  exit 2
+fi
+
+target="$1"
+shift
+
+env_file="/usr/local/lib/gobuild/bootstrap-go-std.sh"
+if [ ! -r "$env_file" ]; then
+  echo "go-cross: cannot read $env_file" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+. "$env_file"
+
+case "$target" in
+  amd64)
+    export GOOS=linux GOARCH=amd64 CGO_ENABLED=1
+    unset GOARM CC CXX AR CGO_CFLAGS CGO_CXXFLAGS
+    ;;
+  arm64)
+    export GOOS=linux GOARCH=arm64 CGO_ENABLED=1
+    export CC="$ARM64_CC" CXX="$ARM64_CXX" AR="$ARM64_AR"
+    export CGO_CFLAGS="$ARM64_CFLAGS" CGO_CXXFLAGS="$ARM64_CFLAGS"
+    unset GOARM
+    ;;
+  armv7|arm)
+    export GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=1
+    export CC="$ARMV7_CC" CXX="$ARMV7_CXX" AR="$ARMV7_AR"
+    export CGO_CFLAGS="$ARMV7_CFLAGS" CGO_CXXFLAGS="$ARMV7_CFLAGS"
+    ;;
+  *)
+    echo "go-cross: unsupported target '$target' (want amd64|arm64|armv7)" >&2
+    exit 2
+    ;;
+esac
+
+exec "$@"

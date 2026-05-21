@@ -1,0 +1,123 @@
+name: build-images
+
+# Publishes the gobuild cross-compile images to the Forgejo container
+# registry. The matrix produces 2 Go minors x 3 Debian codenames x 3
+# flavors = 18 images per run. Go patch versions float: each job
+# resolves the newest M.m.p from https://go.dev/dl/?mode=json at start
+# time, so the image bits are always up-to-date even though the
+# published tag stays at the M.m level.
+#
+# Registry coordinates come from Forgejo repository variables:
+#   vars.REGISTRY   e.g. forgejo.gophertribe.com
+#   vars.NAMESPACE  e.g. gophertribe
+# and the workflow expects two secrets:
+#   secrets.FORGEJO_USER   bot account name (or use ${{ gitea.actor }})
+#   secrets.FORGEJO_TOKEN  access token with package:write scope.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - '.forgejo/workflows/build-images.yml'
+      - '.github/workflows/build-images.yml'
+  schedule:
+    # weekly Monday 04:17 UTC, picks up new Go patch releases
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ vars.REGISTRY }}
+  NAMESPACE: ${{ vars.NAMESPACE }}
+  IMAGE_NAME: gobuild
+
+jobs:
+  build:
+    runs-on: docker
+    strategy:
+      fail-fast: false
+      matrix:
+        go_minor: ['1.24', '1.25']
+        codename: [buster, bookworm, trixie]
+        flavor: [base, wails, audio]
+
+    steps:
+      - name: Validate registry configuration
+        run: |
+          set -eu
+          if [ -z "${REGISTRY}" ] || [ -z "${NAMESPACE}" ]; then
+            echo "ERROR: REGISTRY and NAMESPACE repository variables must be set" >&2
+            exit 1
+          fi
+          echo "registry: ${REGISTRY}/${NAMESPACE}/${IMAGE_NAME}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve latest Go ${{ matrix.go_minor }}.x
+        id: gover
+        run: |
+          set -euo pipefail
+          version=$(curl -fsSL 'https://go.dev/dl/?mode=json' \
+            | jq -r --arg m "${{ matrix.go_minor }}" '
+                [.[] | select(.stable == true)
+                     | select(.version | startswith("go" + $m + "."))
+                     | .version][0]
+              ' \
+            | sed 's/^go//')
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "could not resolve latest go ${{ matrix.go_minor }}.x" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Resolved Go ${{ matrix.go_minor }} -> ${version}"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Forgejo registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.FORGEJO_USER }}
+          password: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          set -eu
+          # Base flavor is the unsuffixed default; every other flavor
+          # becomes a "-<flavor>" tag suffix.
+          suffix=""
+          if [ "${{ matrix.flavor }}" != "base" ]; then
+            suffix="-${{ matrix.flavor }}"
+          fi
+          tag="${REGISTRY}/${NAMESPACE}/${IMAGE_NAME}:${{ matrix.go_minor }}-${{ matrix.codename }}${suffix}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.codename == 'buster' && 'docker/Dockerfile.gobuild-buster' || 'docker/Dockerfile.gobuild' }}
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.tag.outputs.tag }}
+          build-args: |
+            GO_VERSION=${{ steps.gover.outputs.version }}
+            DEBIAN_CODENAME=${{ matrix.codename }}
+            FLAVOR=${{ matrix.flavor }}
+          cache-from: type=registry,ref=${{ steps.tag.outputs.tag }}-buildcache
+          cache-to: type=registry,ref=${{ steps.tag.outputs.tag }}-buildcache,mode=max,ignore-error=true
+
+      - name: Smoke test (go version + cross targets)
+        run: |
+          set -eu
+          docker run --rm --platform linux/amd64 "${{ steps.tag.outputs.tag }}" \
+            sh -euc '
+              go version
+              go-cross amd64 go version
+              go-cross arm64 go version
+              go-cross armv7 go version
+            '

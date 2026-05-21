@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1.7
+#
+# gobuild - legacy Debian buster path.
+#
+# Buster is EOL on the standard mirrors and there is no upstream
+# golang:<X>-buster image for current Go releases. This Dockerfile
+# starts from a plain debian:buster-slim, repoints apt at
+# archive.debian.org, fetches the Go tarball directly from go.dev and
+# verifies its SHA-256 against the public catalog.
+#
+# Build args:
+#   GO_VERSION    Full Go version (M.m.p, e.g. 1.25.3) - required to
+#                 resolve a real tarball / sha256 from go.dev.
+#   FLAVOR        "base" (default), "wails" or "audio". Mirrors
+#                 Dockerfile.gobuild.
+#   WAILS_VERSION Wails CLI version selector, only used when FLAVOR=wails.
+#
+# Security caveat: archive.debian.org no longer ships security updates
+# for buster. Treat any image produced here as legacy-only.
+
+ARG GO_VERSION=1.25.3
+
+FROM --platform=linux/amd64 debian:buster-slim
+
+ARG GO_VERSION
+ARG FLAVOR=base
+ARG WAILS_VERSION=latest
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    GOPATH=/go \
+    GOTOOLCHAIN=local \
+    PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig
+
+COPY --chmod=0755 docker/scripts/ /tmp/scripts/
+
+RUN /tmp/scripts/apt-rewrite-buster.sh \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ca-certificates curl wget xz-utils gnupg jq git \
+ && GO_VERSION="${GO_VERSION}" /tmp/scripts/install-go.sh \
+ && /tmp/scripts/install-cross-toolchains.sh \
+ && if [ "$FLAVOR" = "wails" ]; then /tmp/scripts/install-wails-deps.sh; fi \
+ && if [ "$FLAVOR" = "audio" ]; then /tmp/scripts/install-audio-deps.sh; fi \
+ && mkdir -p "$GOPATH/src" "$GOPATH/bin" \
+ && chmod -R 1777 "$GOPATH" \
+ && /tmp/scripts/bootstrap-go-std.sh \
+ && install -d /usr/local/lib/gobuild \
+ && install -m 0644 /tmp/scripts/bootstrap-go-std.sh /usr/local/lib/gobuild/bootstrap-go-std.sh \
+ && install -m 0755 /tmp/scripts/go-cross /usr/local/bin/go-cross \
+ && rm -rf /tmp/scripts /var/lib/apt/lists/*
+
+RUN if [ "$FLAVOR" = "wails" ]; then \
+      go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"; \
+    fi
+
+LABEL org.opencontainers.image.title="gobuild" \
+      org.opencontainers.image.description="Go cross-compile image for legacy Debian buster (cgo, amd64/arm64/armv7)" \
+      org.opencontainers.image.source="https://github.com/gophertribe/devtool" \
+      org.opencontainers.image.licenses="MIT" \
+      org.gophertribe.go-version="${GO_VERSION}" \
+      org.gophertribe.debian="buster" \
+      org.gophertribe.flavor="${FLAVOR}" \
+      org.gophertribe.lifecycle="legacy-eol"
+
+WORKDIR /src

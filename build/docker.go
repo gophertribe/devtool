@@ -18,15 +18,101 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-const buildImage = "gophertribe/gobuild:1.25-bookworm"
+// Defaults for the gobuild image reference. These compose into
+//
+//	<registry>/<namespace>/<image>:<go-minor>-<codename>[-wails]
+//
+// to match the tags pushed by .forgejo/workflows/build-images.yml and
+// .github/workflows/build-images.yml (Forgejo registry by default; use
+// DOCKER_BUILD_IMAGE for ghcr.io or another mirror).
+// All five are overridable - either through DockerBuildOpts or, at
+// runtime, through the DOCKER_BUILD_IMAGE environment variable (which
+// takes the full image reference verbatim and bypasses composition).
+const (
+	defaultBuildImageRegistry  = "forgejo.gophertribe.com"
+	defaultBuildImageNamespace = "gophertribe"
+	defaultBuildImageName      = "gobuild"
+	defaultBuildImageGoMinor   = "1.25"
+	defaultBuildImageCodename  = "bookworm"
+	defaultBuildImageFlavor    = "base"
+)
 
-// DockerBuildOpts represents options for Docker builds
+// envBuildImageOverride is the env var consulted by resolveBuildImage
+// when DockerBuildOpts.Image is empty.
+const envBuildImageOverride = "DOCKER_BUILD_IMAGE"
+
+// DockerBuildOpts represents options for Docker builds.
 type DockerBuildOpts struct {
 	Deps     []string
 	DepsPath string
 	NoCache  bool
 	Arch     string
-	Image    string
+
+	// Image, when non-empty, is used verbatim as the build container
+	// image reference. Takes precedence over GoMinor/Codename/Flavor
+	// and over DOCKER_BUILD_IMAGE.
+	Image string
+
+	// GoMinor selects the Go toolchain minor (e.g. "1.24", "1.25").
+	GoMinor string
+
+	// Codename selects the Debian release the image is based on
+	// (e.g. "buster", "bookworm", "trixie").
+	Codename string
+
+	// Flavor selects the image variant. "base" (default) is the lean
+	// cross-compile image; "wails" includes desktop libraries and the
+	// wails CLI; "audio" includes liblinphone-dev + libasound2-dev for
+	// SIP / softphone / low-level audio cgo callers.
+	Flavor string
+}
+
+// knownFlavorSuffixes is the set of flavors that produce a non-empty
+// tag suffix. Anything else - including the default "base" or an
+// empty string - resolves to the unsuffixed image. Unknown flavors are
+// silently treated as base; this matches the historical behavior and
+// keeps a typo in opts.Flavor from generating tags that do not exist
+// in the registry.
+var knownFlavorSuffixes = map[string]string{
+	"wails": "-wails",
+	"audio": "-audio",
+}
+
+// BuildImageRef returns the canonical Forgejo image reference for the
+// requested combination. An empty argument falls back to the package
+// default.
+func BuildImageRef(goMinor, codename, flavor string) string {
+	if goMinor == "" {
+		goMinor = defaultBuildImageGoMinor
+	}
+	if codename == "" {
+		codename = defaultBuildImageCodename
+	}
+	if flavor == "" {
+		flavor = defaultBuildImageFlavor
+	}
+	suffix := knownFlavorSuffixes[flavor]
+	return fmt.Sprintf("%s/%s/%s:%s-%s%s",
+		defaultBuildImageRegistry,
+		defaultBuildImageNamespace,
+		defaultBuildImageName,
+		goMinor, codename, suffix,
+	)
+}
+
+// resolveBuildImage picks the image ref to use for a build, in this
+// order:
+//  1. opts.Image, if explicitly set.
+//  2. The DOCKER_BUILD_IMAGE environment variable.
+//  3. Composed from opts.GoMinor/Codename/Flavor (with defaults).
+func resolveBuildImage(opts DockerBuildOpts) string {
+	if strings.TrimSpace(opts.Image) != "" {
+		return opts.Image
+	}
+	if v := strings.TrimSpace(os.Getenv(envBuildImageOverride)); v != "" {
+		return v
+	}
+	return BuildImageRef(opts.GoMinor, opts.Codename, opts.Flavor)
 }
 
 // DockerImageBuildOpts configures docker image builds.
@@ -51,10 +137,7 @@ func Docker(ctx context.Context, command string, commandArgs []string, opts Dock
 	}
 	slog.Info("docker info", "arch", info.Info.Architecture, "os", info.Info.OperatingSystem, "version", info.Info.ServerVersion)
 
-	img := buildImage
-	if opts.Image != "" {
-		img = opts.Image
-	}
+	img := resolveBuildImage(opts)
 
 	reader, err := cli.ImagePull(ctx, img, client.ImagePullOptions{
 		Platforms: []ocispec.Platform{

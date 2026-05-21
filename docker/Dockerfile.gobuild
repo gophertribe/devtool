@@ -1,0 +1,67 @@
+# syntax=docker/dockerfile:1.7
+#
+# gobuild - modern Debian path (bookworm, trixie)
+#
+# Build args:
+#   GO_VERSION       Go toolchain version. May be a full M.m.p (1.25.3) or
+#                    just M.m (1.25). The official golang image is used as
+#                    the base, so both forms resolve.
+#   DEBIAN_CODENAME  Debian release the image is based on. Must match an
+#                    available golang:<GO_VERSION>-<CODENAME> tag.
+#   FLAVOR           "base" (default), "wails" or "audio".
+#                    "wails" adds desktop libraries (GTK/webkit) and the
+#                    wails CLI for the native amd64 toolchain.
+#                    "audio" adds liblinphone-dev + libasound2-dev for
+#                    SIP / softphone / low-level audio cgo callers.
+#   WAILS_VERSION    Wails CLI version selector passed to `go install`,
+#                    only consulted when FLAVOR=wails. Defaults to latest.
+
+ARG GO_VERSION=1.25
+ARG DEBIAN_CODENAME=bookworm
+
+FROM --platform=linux/amd64 golang:${GO_VERSION}-${DEBIAN_CODENAME}
+
+ARG FLAVOR=base
+ARG WAILS_VERSION=latest
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    GOTOOLCHAIN=local \
+    PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig
+
+# Slim down apt: drop docs/man, never install recommends/suggests.
+RUN printf '%s\n' \
+      'path-exclude /usr/share/doc/*' \
+      'path-include /usr/share/doc/*/copyright' \
+      'path-exclude /usr/share/man/*' \
+      'path-exclude /usr/share/groff/*' \
+      'path-exclude /usr/share/info/*' \
+      'path-exclude /usr/share/lintian/*' \
+      'path-exclude /usr/share/linda/*' \
+      > /etc/dpkg/dpkg.cfg.d/01_nodoc \
+ && echo 'APT::Install-Recommends "0";' > /etc/apt/apt.conf.d/01-no-recommends \
+ && echo 'APT::Install-Suggests "0";'  >> /etc/apt/apt.conf.d/01-no-recommends
+
+COPY --chmod=0755 docker/scripts/ /tmp/scripts/
+
+RUN /tmp/scripts/install-cross-toolchains.sh \
+ && if [ "$FLAVOR" = "wails" ]; then /tmp/scripts/install-wails-deps.sh; fi \
+ && if [ "$FLAVOR" = "audio" ]; then /tmp/scripts/install-audio-deps.sh; fi \
+ && /tmp/scripts/bootstrap-go-std.sh \
+ && install -d /usr/local/lib/gobuild \
+ && install -m 0644 /tmp/scripts/bootstrap-go-std.sh /usr/local/lib/gobuild/bootstrap-go-std.sh \
+ && install -m 0755 /tmp/scripts/go-cross /usr/local/bin/go-cross \
+ && rm -rf /tmp/scripts
+
+RUN if [ "$FLAVOR" = "wails" ]; then \
+      go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"; \
+    fi
+
+LABEL org.opencontainers.image.title="gobuild" \
+      org.opencontainers.image.description="Go cross-compile image (cgo, amd64/arm64/armv7)" \
+      org.opencontainers.image.source="https://github.com/gophertribe/devtool" \
+      org.opencontainers.image.licenses="MIT" \
+      org.gophertribe.go-version="${GO_VERSION}" \
+      org.gophertribe.debian="${DEBIAN_CODENAME}" \
+      org.gophertribe.flavor="${FLAVOR}"
+
+WORKDIR /src
