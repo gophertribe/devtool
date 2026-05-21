@@ -4,12 +4,14 @@
 # Buster-specific variant of install-cross-toolchains.sh. On archive
 # mirrors, adding armhf/arm64 before the native build-essential stack
 # is in place causes apt to fail resolving libc6-dev / libudev-dev.
-# Hub images also ship a newer libc6 (deb10u3) than buster/main's
-# libc6-dev (deb10u1) unless debian-security is enabled — see
-# apt-rewrite-buster.sh.
+#
+# docker.io/debian:buster-slim ships libc6 revisions (e.g. deb10u3)
+# whose matching libc6-dev was never published on archive.debian.org.
+# Do NOT pin libc6-dev to the hub image's libc6 version — sync both
+# packages from archive with --allow-downgrades instead.
 #
 # Install order:
-#   1. native amd64 toolchain, libc6-dev matched to installed libc6
+#   1. sync libc6 + libc6-dev from archive, then native toolchain
 #   2. add foreign architectures
 #   3. cross compilers and multi-arch -dev packages
 
@@ -19,35 +21,34 @@ export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
 
-libc6_ver="$(dpkg-query -W -f='${Version}' libc6 2>/dev/null || true)"
-echo "[install-cross-toolchains-buster] libc6=${libc6_ver:-unknown}"
+echo "[install-cross-toolchains-buster] libc6 before sync: $(dpkg-query -W -f='${Version}' libc6 2>/dev/null || echo none)"
+echo "[install-cross-toolchains-buster] libc6-dev candidates: $(apt-cache madison libc6-dev 2>/dev/null | awk '{print $3}' | paste -sd, - || echo none)"
 
-# bzip2 is required by dpkg-dev; make/patch by build-essential.
-# Install libc6-dev at the same version as the base image's libc6
-# before pulling in build-essential (avoids u1 vs u3 skew on archive).
-base_pkgs=(
-  bzip2
-  make
-  patch
-  pkg-config
-  fakeroot
-  gcc
-  g++
-  dpkg-dev
-  dpkg-cross
-)
-
-if [ -n "${libc6_ver}" ]; then
-  apt-get install -y --no-install-recommends \
-    "libc6-dev=${libc6_ver}" \
-    "${base_pkgs[@]}"
-else
-  apt-get install -y --no-install-recommends \
-    libc6-dev \
-    "${base_pkgs[@]}"
+# Let apt pick a consistent libc6 / libc6-dev pair from archive (usually
+# downgrades runtime to match buster/main's libc6-dev). Fall back to the
+# last known good pair on archive if the open-ended install fails.
+if ! apt-get install -y --allow-downgrades --no-install-recommends \
+  libc6 \
+  libc6-dev; then
+  echo "[install-cross-toolchains-buster] retrying with explicit buster/main glibc"
+  apt-get install -y --allow-downgrades --no-install-recommends \
+    libc6=2.28-10+deb10u1 \
+    libc6-dev=2.28-10+deb10u1
 fi
 
-apt-get install -y --no-install-recommends build-essential
+echo "[install-cross-toolchains-buster] libc6 after sync: $(dpkg-query -W -f='${Version}' libc6)"
+
+apt-get install -y --no-install-recommends \
+  bzip2 \
+  make \
+  patch \
+  pkg-config \
+  fakeroot \
+  gcc \
+  g++ \
+  dpkg-dev \
+  dpkg-cross \
+  build-essential
 
 dpkg --add-architecture armhf
 dpkg --add-architecture arm64
