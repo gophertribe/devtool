@@ -16,6 +16,7 @@ func TestBuildImageRef(t *testing.T) {
 		{"base flavor explicit", "1.26", "bookworm", "base", "forgejo.gophertribe.com/gophertribe/gobuild:1.26-bookworm"},
 		{"buster wails", "1.26", "buster", "wails", "forgejo.gophertribe.com/gophertribe/gobuild:1.26-buster-wails"},
 		{"bookworm audio", "1.25", "bookworm", "audio", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm-audio"},
+		{"bookworm node", "1.25", "bookworm", "node", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm-node"},
 		{"trixie audio", "1.26", "trixie", "audio", "forgejo.gophertribe.com/gophertribe/gobuild:1.26-trixie-audio"},
 		{"trixie base", "1.25", "trixie", "base", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-trixie"},
 		{"unknown flavor is treated as base", "1.25", "bookworm", "weird", "forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm"},

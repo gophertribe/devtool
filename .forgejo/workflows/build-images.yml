@@ -1,8 +1,8 @@
 name: build-images
 
 # Publishes the gobuild cross-compile images to the Forgejo container
-# registry. The matrix produces 2 Go minors x 3 Debian codenames x 3
-# flavors = 18 images per run. Go patch versions float: each job
+# registry. The matrix produces 2 Go minors x 3 Debian codenames x 4
+# flavors = 22 images per run (node is omitted for legacy buster). Go patch
 # resolves the newest M.m.p from https://go.dev/dl/?mode=json at start
 # time, so the image bits are always up-to-date even though the
 # published tag stays at the M.m level.
@@ -39,7 +39,10 @@ jobs:
       matrix:
         go_minor: ['1.25', '1.26']
         codename: [buster, bookworm, trixie]
-        flavor: [base, wails, audio]
+        flavor: [base, wails, audio, node]
+        exclude:
+          - codename: buster
+            flavor: node
 
     steps:
       - name: Validate registry configuration
@@ -121,3 +124,7 @@ jobs:
               go-cross arm64 go version
               go-cross armv7 go version
             '
+          if [ "${{ matrix.flavor }}" = "node" ]; then
+            docker run --rm --platform linux/amd64 "${{ steps.tag.outputs.tag }}" \
+              sh -euc 'node --version && npm --version'
+          fi

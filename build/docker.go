@@ -63,7 +63,8 @@ type DockerBuildOpts struct {
 	// Flavor selects the image variant. "base" (default) is the lean
 	// cross-compile image; "wails" includes desktop libraries and the
 	// wails CLI; "audio" includes liblinphone-dev + libasound2-dev for
-	// SIP / softphone / low-level audio cgo callers.
+	// SIP / softphone / low-level audio cgo callers; "node" includes
+	// Node.js from NodeSource for CI / frontend tooling.
 	Flavor string
 }
 
@@ -76,6 +77,7 @@ type DockerBuildOpts struct {
 var knownFlavorSuffixes = map[string]string{
 	"wails": "-wails",
 	"audio": "-audio",
+	"node":  "-node",
 }
 
 // BuildImageRef returns the canonical Forgejo image reference for the
