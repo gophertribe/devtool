@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,20 @@ import (
 )
 
 var ErrBuildFailed = errors.New("build failed")
+
+// TargetEngines are the minimum browser versions the frontend bundles support.
+var TargetEngines = []api.Engine{
+	{Name: api.EngineChrome, Version: "58"},
+	{Name: api.EngineFirefox, Version: "57"},
+	{Name: api.EngineSafari, Version: "11"},
+}
+
+// TargetSupported tells esbuild which syntax is natively available in TargetEngines.
+// Destructuring is supported by these browsers, but esbuild 0.28+ conservatively
+// treats older Safari versions as incompatible and cannot downlevel it.
+var TargetSupported = map[string]bool{
+	"destructuring": true,
+}
 
 type BuildOptions struct {
 	// Mode is the build mode, either "prod" or "dev"
@@ -36,9 +51,17 @@ type BuildOptions struct {
 	StaticDir string
 	// IndexFile is the name of the html index file that will be used as template to inject the javascript and css
 	IndexFile string
+	// SourceDir is the frontend application directory holding package.json/node_modules.
+	// When set, Build ensures npm dependencies are installed before bundling.
+	SourceDir string
 }
 
 func Build(opts BuildOptions) error {
+	if opts.SourceDir != "" {
+		if err := EnsureNodeModules(opts.SourceDir); err != nil {
+			return err
+		}
+	}
 	tmpDir, err := os.MkdirTemp("", "dev_frontend")
 	if err != nil {
 		return fmt.Errorf("could not create temporary dir: %w", err)
@@ -56,11 +79,8 @@ func Build(opts BuildOptions) error {
 			".png":   api.LoaderFile,
 			".jpg":   api.LoaderFile,
 		},
-		Engines: []api.Engine{
-			{Name: api.EngineChrome, Version: "58"},
-			{Name: api.EngineFirefox, Version: "57"},
-			{Name: api.EngineSafari, Version: "11"},
-		},
+		Engines:    TargetEngines,
+		Supported:  TargetSupported,
 		Write:      true,
 		Outdir:     tmpDir,
 		PublicPath: opts.PublicPath,
@@ -184,6 +204,25 @@ func Proxy(ctx context.Context, opts BuildOptions, enableTLS bool, port int) err
 	_ = server.Shutdown(ctx)
 	return nil
 
+}
+
+// EnsureNodeModules installs npm dependencies when node_modules is missing (e.g. CI checkout).
+func EnsureNodeModules(appDir string) error {
+	if _, err := os.Stat(filepath.Join(appDir, "node_modules")); err == nil {
+		return nil
+	}
+	lockFile := filepath.Join(appDir, "package-lock.json")
+	if _, err := os.Stat(lockFile); err != nil {
+		return fmt.Errorf("frontend app %s has no node_modules and no package-lock.json", appDir)
+	}
+	cmd := exec.Command("npm", "ci", "--no-audit", "--no-fund")
+	cmd.Dir = appDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("npm ci in %s: %w", appDir, err)
+	}
+	return nil
 }
 
 func BuildIndex(indexFile string, indexParams any) error {
