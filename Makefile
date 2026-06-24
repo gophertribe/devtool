@@ -20,18 +20,26 @@ GOTESTSUM_FLAGS := --no-summary=skipped --format short
 # JUnit output for CI; filename matches test/test.go convention.
 GOTESTSUM_FLAGS += --junitfile ./coverage.xml
 
-.PHONY: all build test lint check clean help
+.PHONY: all build test lint check clean help patch-deps
+
+PATCH_GO_GIT := ./scripts/patch-go-git.sh
+GO_GIT_PATCHED := third_party/go-git/.patched
+
+patch-deps: $(GO_GIT_PATCHED)
+
+$(GO_GIT_PATCHED): go.mod go.sum patches/go-git-worktreeconfig.patch $(PATCH_GO_GIT)
+	$(PATCH_GO_GIT)
 
 all: build check
 
-build:
+build: patch-deps
 	@mkdir -p $(BIN_DIR)
 	go build -o $(BINARY) $(CMD)
 
-test:
+test: patch-deps
 	$(GOTESTSUM) $(GOTESTSUM_FLAGS) ./...
 
-lint:
+lint: patch-deps
 	$(GOLANGCI_LINT) run --timeout 5m ./...
 
 check: lint test

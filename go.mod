@@ -59,3 +59,5 @@ require (
 	golang.org/x/text v0.36.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/go-git/go-git/v5 => ./third_party/go-git
