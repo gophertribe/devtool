@@ -56,6 +56,11 @@ type BuildOptions struct {
 	SourceDir string
 	// ErrOut is the writer to print build errors to
 	ErrOut io.Writer
+	// CleanBuildDir removes BuildDir before copying build output. Defaults to true.
+	// Set to false when multiple frontend apps write into the same BuildDir.
+	CleanBuildDir *bool
+	// Verbose prints esbuild warnings in prod mode. Warnings are always printed in dev mode.
+	Verbose bool
 }
 
 func Build(opts BuildOptions) error {
@@ -98,6 +103,7 @@ func Build(opts BuildOptions) error {
 		buildOpts.Sourcemap = api.SourceMapLinked
 	}
 	res := api.Build(buildOpts)
+	printBuildWarnings(opts, res.Warnings)
 	if len(res.Errors) > 0 {
 		err := FormatBuildErrors(res.Errors)
 		printBuildErrors(os.Stderr, res.Errors) // see #2
@@ -129,13 +135,8 @@ func Build(opts BuildOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not build index file: %w", err)
 	}
-	err = os.RemoveAll(opts.BuildDir)
-	if err != nil {
-		return fmt.Errorf("could not clear build dir: %w", err)
-	}
-	err = os.Mkdir(opts.BuildDir, 0755)
-	if err != nil {
-		return fmt.Errorf("could not recreate build dir: %w", err)
+	if err := prepareBuildDir(opts.BuildDir, cleanBuildDir(opts)); err != nil {
+		return err
 	}
 	err = CopyDir(tmpDir, opts.BuildDir)
 	if err != nil {
