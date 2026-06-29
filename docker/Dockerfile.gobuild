@@ -13,7 +13,9 @@
 #                    wails CLI for the native amd64 toolchain.
 #                    "audio" adds liblinphone-dev + libasound2-dev for
 #                    SIP / softphone / low-level audio cgo callers.
-#                    "node" adds Node.js from NodeSource (bookworm/trixie).
+#                    "node" adds Node.js from NodeSource (bookworm/trixie)
+#                    and Docker CLI + buildx (client only) for CI jobs that
+#                    build or push images when the host socket is mounted.
 #   WAILS_VERSION    Wails CLI version selector passed to `go install`,
 #                    only consulted when FLAVOR=wails. Defaults to latest.
 #   NODE_MAJOR       NodeSource major version stream, only consulted when
@@ -50,7 +52,10 @@ COPY --chmod=0755 docker/scripts/ /tmp/scripts/
 RUN /tmp/scripts/install-cross-toolchains.sh \
  && if [ "$FLAVOR" = "wails" ]; then /tmp/scripts/install-wails-deps.sh; fi \
  && if [ "$FLAVOR" = "audio" ]; then /tmp/scripts/install-audio-deps.sh; fi \
- && if [ "$FLAVOR" = "node" ]; then NODE_MAJOR="$NODE_MAJOR" /tmp/scripts/install-node-deps.sh; fi \
+ && if [ "$FLAVOR" = "node" ]; then \
+      NODE_MAJOR="$NODE_MAJOR" /tmp/scripts/install-node-deps.sh; \
+      /tmp/scripts/install-docker-cli.sh; \
+    fi \
  && /tmp/scripts/bootstrap-go-std.sh \
  && install -d /usr/local/lib/gobuild \
  && install -m 0644 /tmp/scripts/bootstrap-go-std.sh /usr/local/lib/gobuild/bootstrap-go-std.sh \

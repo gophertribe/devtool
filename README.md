@@ -61,6 +61,10 @@ Flavors:
 - `audio` - adds `liblinphone-dev` + `libasound2-dev` for SIP /
   softphone / low-level audio cgo callers (amd64 native only - these
   packages are not reliably available for armhf / arm64 on Debian).
+- `node` - adds Node.js from NodeSource plus Docker CLI and buildx
+  (client only) for CI jobs that build frontends and push OCI images.
+  Image build/push talks to the host daemon via `/var/run/docker.sock`;
+  configure Forgejo runner `container.docker_host: automount`.
 
 Two Dockerfiles back the matrix:
 
@@ -86,6 +90,10 @@ Both Dockerfiles share [`docker/scripts/`](docker/scripts/):
   when `FLAVOR=audio`. Keeping these separate from `wails` lets you
   pull a thin Wails image without dragging the linphone dependency
   chain in, and vice versa.
+- `install-node-deps.sh` - NodeSource Node.js/npm. Only runs when
+  `FLAVOR=node`.
+- `install-docker-cli.sh` - Docker CLI + buildx plugin. Only runs when
+  `FLAVOR=node` (after `install-node-deps.sh`).
 - `bootstrap-go-std.sh` - pre-warms `go install std` for amd64, arm64
   and armv7 using the canonical CGO flags below. This file is also
   installed into the image (at `/usr/local/lib/gobuild/`) so the

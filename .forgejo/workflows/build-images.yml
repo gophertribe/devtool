@@ -126,5 +126,5 @@ jobs:
             '
           if [ "${{ matrix.flavor }}" = "node" ]; then
             docker run --rm --platform linux/amd64 "${{ steps.tag.outputs.tag }}" \
-              sh -euc 'node --version && npm --version'
+              sh -euc 'node --version && npm --version && docker --version && docker buildx version'
           fi
