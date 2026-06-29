@@ -1,6 +1,11 @@
 package console
 
-import "github.com/fatih/color"
+import (
+	"fmt"
+	"io"
+
+	"github.com/fatih/color"
+)
 
 // Available ANSI colors
 var (
@@ -12,3 +17,8 @@ var (
 	Cyan   = color.New(color.FgCyan).SprintFunc()
 	Dim    = color.New(color.Faint).SprintFunc()
 )
+
+// Error writes msg to w using the standard error color.
+func Error(w io.Writer, msg string) {
+	_, _ = fmt.Fprintln(w, Red(msg))
+}

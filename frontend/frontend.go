@@ -54,6 +54,8 @@ type BuildOptions struct {
 	// SourceDir is the frontend application directory holding package.json/node_modules.
 	// When set, Build ensures npm dependencies are installed before bundling.
 	SourceDir string
+	// ErrOut is the writer to print build errors to
+	ErrOut io.Writer
 }
 
 func Build(opts BuildOptions) error {
@@ -66,6 +68,8 @@ func Build(opts BuildOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not create temporary dir: %w", err)
 	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
 	buildOpts := api.BuildOptions{
 		Color:       api.ColorAlways,
 		EntryPoints: []string{opts.Entrypoint},
@@ -95,15 +99,9 @@ func Build(opts BuildOptions) error {
 	}
 	res := api.Build(buildOpts)
 	if len(res.Errors) > 0 {
-		for _, err := range res.Errors {
-			if err.Location == nil {
-				slog.Error(err.Text)
-				continue
-			}
-			fmt.Printf("%s %s\n%s\n%s", console.Red(fmt.Sprintf("%s:%d/%d", err.Location.File, err.Location.Line, err.Location.Column)), err.Text, err.Location.LineText, err.Location.Suggestion)
-
-		}
-		return ErrBuildFailed
+		err := FormatBuildErrors(res.Errors)
+		printBuildErrors(os.Stderr, res.Errors) // see #2
+		return err
 	}
 	indexParams := struct {
 		JS        []string
@@ -143,9 +141,16 @@ func Build(opts BuildOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not copy build results to %s: %w", opts.BuildDir, err)
 	}
-	// clear temporary folder
-	_ = os.RemoveAll(tmpDir)
 	return nil
+}
+
+func printBuildErrors(w io.Writer, messages []api.Message) {
+	if w == nil {
+		w = os.Stderr
+	}
+	for _, msg := range messages {
+		console.Error(w, formatBuildErrorMessage(msg))
+	}
 }
 
 func Proxy(ctx context.Context, opts BuildOptions, enableTLS bool, port int) error {
