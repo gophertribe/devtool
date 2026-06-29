@@ -8,16 +8,23 @@ import (
 )
 
 // CanBuildLocally reports whether the effective target can be built on this
-// host without spawning the build container.
-func CanBuildLocally(effectiveOS, effectiveArch string) bool {
+// host with the Go compiler alone, i.e. without a C cross toolchain that is
+// not present. It reflects only real go compiler constraints, not policy
+// choices like build reproducibility (use the build container explicitly for
+// that).
+func CanBuildLocally(effectiveOS, effectiveArch string, cgoEnabled bool) bool {
+	// Without cgo the Go toolchain cross-compiles to any GOOS/GOARCH on its
+	// own, no external C toolchain required.
+	if !cgoEnabled {
+		return true
+	}
+	// With cgo, a native target builds with the host C toolchain.
 	if effectiveOS == runtime.GOOS && effectiveArch == runtime.GOARCH {
 		return true
 	}
-	// amd64 cross targets (e.g. linux/amd64 -> windows/amd64) work with plain go.
-	if effectiveArch == "amd64" {
-		return true
-	}
-	// Same-OS arch cross (e.g. linux/amd64 -> linux/arm64) needs cross GCC in PATH.
+	// With cgo, cross-compilation needs a matching cross C toolchain in PATH.
+	// Only same-OS arm/arm64 cross toolchains are detectable (and wired up by
+	// GoBuild); anything else requires the build container.
 	if effectiveOS == runtime.GOOS && hasCrossToolchain(effectiveArch) {
 		return true
 	}
