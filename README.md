@@ -45,13 +45,13 @@ Run the binary after a local build:
 
 ### Matrix
 
-Each CI run (Forgejo or GitHub) produces 18 images:
+Each CI run (Forgejo or GitHub) produces 24 images:
 
-| dimension       | values                          |
-|-----------------|---------------------------------|
-| Go minor        | `1.26`, `1.25` (floating patch) |
-| Debian codename | `buster`, `bookworm`, `trixie`  |
-| Flavor          | `base`, `wails`, `audio`        |
+| dimension       | values                                |
+|-----------------|---------------------------------------|
+| Go minor        | `1.26`, `1.25` (floating patch)       |
+| Debian codename | `buster`, `bookworm`, `trixie`        |
+| Flavor          | `base`, `wails`, `audio`, `node`      |
 
 Flavors:
 
@@ -61,9 +61,12 @@ Flavors:
 - `audio` - adds `liblinphone-dev` + `libasound2-dev` for SIP /
   softphone / low-level audio cgo callers (amd64 native only - these
   packages are not reliably available for armhf / arm64 on Debian).
-- `node` - adds Node.js from NodeSource plus Docker CLI and buildx
-  (client only) for CI jobs that build frontends and push OCI images.
-  Image build/push talks to the host daemon via `/var/run/docker.sock`;
+- `node` - adds Node.js plus Docker CLI and buildx (client only) for
+  CI jobs that build frontends and push OCI images. On bookworm/trixie
+  Node comes from NodeSource and Docker from the Docker apt repo; on
+  buster both are installed from official static/tarball releases
+  (NodeSource and Docker apt do not support EOL buster). Image
+  build/push talks to the host daemon via `/var/run/docker.sock`;
   configure Forgejo runner `container.docker_host: automount`.
 
 Two Dockerfiles back the matrix:
@@ -90,10 +93,12 @@ Both Dockerfiles share [`docker/scripts/`](docker/scripts/):
   when `FLAVOR=audio`. Keeping these separate from `wails` lets you
   pull a thin Wails image without dragging the linphone dependency
   chain in, and vice versa.
-- `install-node-deps.sh` - NodeSource Node.js/npm. Only runs when
-  `FLAVOR=node`.
+- `install-node-deps.sh` - Node.js/npm. Only runs when `FLAVOR=node`.
+  Uses NodeSource on bookworm/trixie; official nodejs.org linux-x64
+  tarball (SHA-256 verified) on buster.
 - `install-docker-cli.sh` - Docker CLI + buildx plugin. Only runs when
-  `FLAVOR=node` (after `install-node-deps.sh`).
+  `FLAVOR=node` (after `install-node-deps.sh`). Uses the Docker apt
+  repo on bookworm/trixie; static CLI + GitHub buildx binary on buster.
 - `bootstrap-go-std.sh` - pre-warms `go install std` for amd64, arm64
   and armv7 using the canonical CGO flags below. This file is also
   installed into the image (at `/usr/local/lib/gobuild/`) so the
@@ -133,8 +138,8 @@ Examples:
 | Forgejo (`forgejo.gophertribe.com/gophertribe`) | `forgejo.gophertribe.com/gophertribe/gobuild:1.25-bookworm` |
 | GHCR (`ghcr.io/<owner>`) | `ghcr.io/gophertribe/gobuild:1.25-bookworm` |
 
-More tags: `1.26-trixie`, `1.25-buster-wails`, `1.25-bookworm-audio` (same
-suffix rules on both registries).
+More tags: `1.26-trixie`, `1.25-buster-wails`, `1.25-bookworm-audio`,
+`1.25-buster-node` (same suffix rules on both registries).
 
 Patch versions float: the workflow resolves the newest `go1.26.x` /
 `go1.25.x` from `https://go.dev/dl/?mode=json` at job start, so the

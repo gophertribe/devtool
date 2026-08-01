@@ -2,7 +2,7 @@ name: build-images
 
 # Publishes the gobuild cross-compile images to GitHub Container Registry
 # (ghcr.io). Same matrix as the Forgejo workflow: 2 Go minors x 3 Debian
-# codenames x 4 flavors = 22 images per run (node is omitted for buster). Go patch versions float via
+# codenames x 4 flavors = 24 images per run. Go patch versions float via
 # https://go.dev/dl/?mode=json at job start.
 #
 # Image path: ghcr.io/<repository_owner>/gobuild:<go-minor>-<codename>[-<flavor>]

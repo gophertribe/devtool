@@ -11,9 +11,13 @@
 # Build args:
 #   GO_VERSION    Full Go version (M.m.p, e.g. 1.25.3) - required to
 #                 resolve a real tarball / sha256 from go.dev.
-#   FLAVOR        "base" (default), "wails" or "audio". Mirrors
-#                 Dockerfile.gobuild.
+#   FLAVOR        "base" (default), "wails", "audio" or "node".
+#                 "node" installs Node from the official linux-x64
+#                 tarball (NodeSource has no buster packages) plus
+#                 Docker CLI / buildx from static binaries.
 #   WAILS_VERSION Wails CLI version selector, only used when FLAVOR=wails.
+#   NODE_MAJOR    Node.js major version stream, only used when
+#                 FLAVOR=node. Defaults to 22.
 #
 # Security caveat: archive.debian.org no longer ships security updates
 # for buster. Treat any image produced here as legacy-only.
@@ -25,6 +29,7 @@ FROM --platform=linux/amd64 debian:buster-slim
 ARG GO_VERSION
 ARG FLAVOR=base
 ARG WAILS_VERSION=latest
+ARG NODE_MAJOR=22
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
@@ -42,6 +47,10 @@ RUN /tmp/scripts/apt-rewrite-buster.sh \
  && /tmp/scripts/install-cross-toolchains-buster.sh \
  && if [ "$FLAVOR" = "wails" ]; then /tmp/scripts/install-wails-deps.sh; fi \
  && if [ "$FLAVOR" = "audio" ]; then /tmp/scripts/install-audio-deps.sh; fi \
+ && if [ "$FLAVOR" = "node" ]; then \
+      NODE_MAJOR="$NODE_MAJOR" /tmp/scripts/install-node-deps.sh; \
+      /tmp/scripts/install-docker-cli.sh; \
+    fi \
  && mkdir -p "$GOPATH/src" "$GOPATH/bin" \
  && chmod -R 1777 "$GOPATH" \
  && /tmp/scripts/bootstrap-go-std.sh \
