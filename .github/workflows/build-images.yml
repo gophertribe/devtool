@@ -42,9 +42,6 @@ jobs:
         go_minor: ['1.25', '1.26']
         codename: [buster, bookworm, trixie]
         flavor: [base, wails, audio, node]
-        exclude:
-          - codename: buster
-            flavor: node
 
     steps:
       - name: Checkout
